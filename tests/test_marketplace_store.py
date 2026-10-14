@@ -81,6 +81,11 @@ class MarketplaceApiTests(unittest.TestCase):
             "product_id": product["id"], "visitor_key": "random-visitor-key-123456",
         })
         self.assertEqual(view.status_code, 202)
+        order = self.client.post("/api/marketplace/orders", json={
+            "customer_id": "analytics-customer",
+            "items": [{"product_id": product["id"], "quantity": 2}],
+        })
+        self.assertEqual(order.status_code, 201)
         analytics = self.client.get("/api/marketplace/seller/analytics?since=all", headers=self.headers)
         self.assertEqual(analytics.status_code, 200)
         self.assertEqual(analytics.get_json()["products_listed"], 1)
