@@ -299,6 +299,13 @@ Rules:
 
 
 # ============================================================
+# MARKETPLACE API (SQLite-backed products and pending orders)
+# ============================================================
+from marketplace_store import marketplace_bp
+app.register_blueprint(marketplace_bp)
+
+
+# ============================================================
 # START SERVER
 # ============================================================
 
