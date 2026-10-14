@@ -87,6 +87,10 @@ class MarketplaceApiTests(unittest.TestCase):
         self.assertEqual(analytics.get_json()["product_views"], 1)
         self.assertEqual(analytics.get_json()["unique_visitors"], 1)
         self.assertIsNone(analytics.get_json()["profit_estimate"])
+        payload = analytics.get_json()
+        self.assertEqual(payload["default_currency"], "EUR")
+        self.assertEqual(payload["currency_totals"]["EUR"]["gross_order_value"], 16.5)
+        self.assertNotIn("gross_order_value", payload)
 
     def test_seller_login_and_duplicate_registration(self):
         duplicate = self.client.post("/api/marketplace/seller/register", json={
