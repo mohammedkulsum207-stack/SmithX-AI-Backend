@@ -51,7 +51,7 @@ class MarketplaceApiTests(unittest.TestCase):
         fetched = self.client.get("/api/marketplace/orders/" + order["id"])
         self.assertEqual(fetched.status_code, 200)
         self.assertEqual(fetched.get_json()["order"]["subtotal"], 25.0)
-        remaining = self.client.get("/api/marketplace/products?seller_id=seller-test")
+        remaining = self.client.get("/api/marketplace/products?seller_id=" + self.seller["id"])
         self.assertEqual(remaining.get_json()["products"][0]["inventory"], 1)
 
     def test_invalid_product_and_insufficient_inventory(self):
