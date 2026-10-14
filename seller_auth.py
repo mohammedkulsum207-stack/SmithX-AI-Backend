@@ -202,18 +202,28 @@ def seller_analytics():
             entry = top.setdefault(product_id or name, {"product_id": product_id, "title": name, "units": 0, "sales_minor": 0, "currency": currency})
             entry["units"] += max(0, quantity)
             entry["sales_minor"] += amount
-    currency = max(currency_totals, key=currency_totals.get) if currency_totals else "KES"
+    # Never silently combine currencies. Return a breakdown and a separate
+    # top-products list for each currency; the client chooses which to display.
+    top_by_currency = {}
+    for item in top.values():
+        top_by_currency.setdefault(item["currency"], []).append(item)
+    currency_breakdown = {
+        code: {
+            "gross_order_value": round(amount / 100, 2),
+            "top_products": sorted(top_by_currency.get(code, []), key=lambda item: item["sales_minor"], reverse=True)[:5],
+        }
+        for code, amount in sorted(currency_totals.items())
+    }
     return jsonify({
         "period": since,
-        "currency": currency,
+        "default_currency": "EUR",
+        "currency_totals": currency_breakdown,
         "products_listed": products_count,
         "inventory_units": inventory_count,
         "orders": orders_count,
         "units_sold_in_orders": units,
-        "gross_order_value": round(currency_totals.get(currency, 0) / 100, 2),
         "product_views": views,
         "unique_visitors": unique_visitors,
-        "top_products": sorted(top.values(), key=lambda item: item["sales_minor"], reverse=True)[:5],
         "profit_estimate": None,
         "profit_note": "Not available until product costs and paid-order/payment-fee data are recorded. These figures count orders except cancelled/refunded statuses; they are not verified paid sales."
     })
