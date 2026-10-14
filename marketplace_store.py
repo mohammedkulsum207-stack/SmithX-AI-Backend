@@ -11,7 +11,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
+from seller_auth import require_seller
 
 marketplace_bp = Blueprint("marketplace", __name__, url_prefix="/api/marketplace")
 
@@ -99,27 +100,37 @@ def list_products():
 
 
 @marketplace_bp.post("/products")
+@require_seller
 def create_product():
     data = request.get_json(silent=True) or {}
-    seller_id = str(data.get("seller_id", "")).strip()
+    seller_id = g.seller_id
     title = str(data.get("title", "")).strip()
-    if not seller_id or not title:
-        return jsonify({"error": "seller_id and title are required"}), 400
+    if not title:
+        return jsonify({"error": "title is required"}), 400
     try:
         price_minor = _money_to_minor(data.get("price", 0))
-        inventory = int(data.get("inventory", 0))
-        if inventory < 0:
+        inventory_raw = data.get("inventory", 0)
+        if isinstance(inventory_raw, bool) or str(inventory_raw).strip() == "":
+            raise ValueError("inventory must be a non-negative integer")
+        inventory = int(inventory_raw)
+        if inventory < 0 or float(inventory_raw) != inventory:
             raise ValueError("inventory must be a non-negative integer")
     except (TypeError, ValueError, OverflowError):
         return jsonify({"error": "price and inventory must be valid non-negative values"}), 400
+    title = title[:200]
+    description = str(data.get("description", "")).strip()[:10000]
+    category = str(data.get("category", "Other")).strip()[:100] or "Other"
+    currency = str(data.get("currency", "KES")).strip().upper()
+    if not __import__("re").fullmatch(r"[A-Z]{3}", currency):
+        return jsonify({"error": "currency must be a three-letter ISO-style code"}), 400
 
     product_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     values = (
         product_id, seller_id, title,
-        str(data.get("description", "")).strip(),
-        str(data.get("category", "Other")).strip() or "Other",
-        price_minor, str(data.get("currency", "KES")).strip().upper() or "KES",
+        description,
+        category,
+        price_minor, currency,
         inventory, created_at,
     )
     with _connect() as db:
